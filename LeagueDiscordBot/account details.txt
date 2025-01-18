@@ -1,0 +1,9 @@
+"   id": "-FLGcWwxrPUEwF0ojsOy09ElNFw9uHB4R9RMx8YZjV2UEJE",
+    "accountId": "RYLTfWGOGAq8GPpqBuJSrBttCOYV0sUgdDxseEUpo5uQ9oc",
+    "puuid": "gojQ2_IZFmRzbRww2zC293sTrwIv_o567wY1OTLrCNdgAU_wEAev7ORx-L3YnhqZEQ7tdWO3GLTuVw",
+    "profileIconId": 1297,
+    "revisionDate": 1736315695000,
+    "summonerLevel": 772
+
+
+    USE match-v5 endpoint for getting matches and their info
