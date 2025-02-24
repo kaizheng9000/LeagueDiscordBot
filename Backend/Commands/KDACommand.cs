@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using LeagueDiscordBot.Riot_API;
+using Backend.RiotAPI;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
-using LeagueDiscordBot.JSONResponseTypes;
+using Backend.JSONResponseTypes;
 using Discord.Commands;
 
-namespace LeagueDiscordBot.Commands
+namespace Backend.Commands
 {
     internal class KDACommand
     {

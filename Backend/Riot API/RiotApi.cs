@@ -1,5 +1,5 @@
 ﻿using Discord.Commands;
-using LeagueDiscordBot.JSONResponseTypes;
+using Backend.JSONResponseTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -8,9 +8,9 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using LeagueDiscordBot;
+using Backend;
 
-namespace LeagueDiscordBot.Riot_API
+namespace Backend.RiotAPI
 {
     internal class RiotApi
     {

@@ -3,7 +3,7 @@ using Discord.Net;
 using Newtonsoft.Json;
 using Discord.WebSocket;
 
-namespace LeagueDiscordBot.CommandBuilders
+namespace Backend.CommandBuilders
 {
     /// <summary>
     /// Helper class for creating a slash command

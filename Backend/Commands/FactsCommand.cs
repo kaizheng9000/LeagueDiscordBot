@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LeagueDiscordBot.Commands
+namespace Backend.Commands
 {
     internal class FactsCommand
     {

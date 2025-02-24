@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using LeagueDiscordBot.Commands;
+using Backend.Commands;
 
-namespace LeagueDiscordBot.CommandHandlers
+namespace Backend.CommandHandlers
 {
     internal class HandleSlashCommands
     {

@@ -5,11 +5,11 @@ using System.Reflection;
 using Discord.Interactions;
 using Discord.Net;
 using Newtonsoft.Json;
-using LeagueDiscordBot.CommandHandlers;
-using LeagueDiscordBot.CommandBuilders;
+using Backend.CommandHandlers;
+using Backend.CommandBuilders;
 using Microsoft.Extensions.Configuration;
 
-namespace LeagueDiscordBot
+namespace Backend
 {
 
     /// <summary>
