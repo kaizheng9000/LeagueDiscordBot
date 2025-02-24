@@ -105,7 +105,7 @@ namespace LeagueDiscordBot.Riot_API
 
         public static async Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid)
         {
-            double kda = 0;
+            float kda = 0;
 
             await Task.Run(async () =>
             { 
@@ -118,7 +118,7 @@ namespace LeagueDiscordBot.Riot_API
                         JArray.Parse(JsonConvert.SerializeObject(matchDetails.SelectToken("info").SelectToken("participants")))
                         .Where(player => (string)player["puuid"] == puuid).ToList();
                          
-                    double stat = (double)matchInfo.Select(info => info["challenges"]).Select(challenge => challenge["kda"]).ToList()[0];
+                    float stat = (float)matchInfo.Select(info => info["challenges"]).Select(challenge => challenge["kda"]).ToList()[0];
 
                     kda += stat;
                 }
