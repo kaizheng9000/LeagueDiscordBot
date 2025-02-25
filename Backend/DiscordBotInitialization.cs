@@ -32,7 +32,7 @@ namespace Backend
             Client.Ready += Client_Ready;
             Client.SlashCommandExecuted += HandleSlashCommands.Handler;
 
-            await Client.LoginAsync(TokenType.Bot, Configs["BotToken"]);
+            await Client.LoginAsync(TokenType.Bot, Configs["DiscordBotToken"]);
             await Client.StartAsync();
 
             // Keep client open forever
