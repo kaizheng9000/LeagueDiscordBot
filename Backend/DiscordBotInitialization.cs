@@ -1,63 +1,54 @@
-﻿using Discord;
-using Discord.WebSocket;
-using Discord.Commands;
-using System.Reflection;
+using Discord;
 using Discord.Interactions;
-using Discord.Net;
-using Newtonsoft.Json;
-using Backend.CommandHandlers;
-using Backend.CommandBuilders;
+using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using Backend.RiotAPI;
 
 namespace Backend
 {
-
-    /// <summary>
-    /// Contains the initialization of the bot and command handlers
-    /// </summary>
     public class DiscordBotInitialization
     {
-        private static DiscordSocketClient Client;
-        public static IConfigurationRoot Configs { get; private set; }
-
         public static async Task Main()
         {
-            var build = new ConfigurationBuilder();
-            build.SetBasePath(Directory.GetCurrentDirectory());
-            build.AddJsonFile("config.json", false, true);
-            Configs = build.Build();
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("config.json", false, true)
+                .Build();
 
-            Client = new();
-            Client.Log += Log;
-            Client.Ready += Client_Ready;
-            Client.SlashCommandExecuted += HandleSlashCommands.Handler;
+            var services = new ServiceCollection()
+                .AddSingleton<DiscordSocketClient>()
+                .AddSingleton<InteractionService>()
+                .AddSingleton<RiotApi>(_ => new RiotApi(
+                    config["RiotAPIToken"] ?? throw new InvalidOperationException("RiotAPIToken is missing from config.json"),
+                    config["RiotAPIHeaderName"] ?? throw new InvalidOperationException("RiotAPIHeaderName is missing from config.json")
+                ))
+                .BuildServiceProvider();
 
-            await Client.LoginAsync(TokenType.Bot, Configs["DiscordBotToken"]);
-            await Client.StartAsync();
+            var client = services.GetRequiredService<DiscordSocketClient>();
+            var interactionService = services.GetRequiredService<InteractionService>();
 
-            // Keep client open forever
+            client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+            interactionService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
+
+            client.Ready += async () =>
+            {
+                await interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
+                await interactionService.RegisterCommandsGloballyAsync();
+            };
+
+            client.InteractionCreated += async interaction =>
+            {
+                var ctx = new SocketInteractionContext(client, interaction);
+                await interactionService.ExecuteCommandAsync(ctx, services);
+            };
+
+            await client.LoginAsync(TokenType.Bot,
+                config["DiscordBotToken"] ?? throw new InvalidOperationException("DiscordBotToken is missing from config.json"));
+            await client.StartAsync();
+
             await Task.Delay(-1);
         }
-
-        private static Task Log(LogMessage msg)
-        {
-            // Can invoke a logging framework here instead of outputting to the console
-            Console.WriteLine(msg.ToString());
-            return Task.CompletedTask;
-        }
-
-        public static async Task Client_Ready()
-        {
-           //await BuildSlashCommand.CreateGlobalSlashCommand(Client, "facts", "Spits some facts");
-           await BuildSlashCommand.CreateGlobalSlashCommand(Client, "kda", "Average KDA of player (Default Region is NA)");
-        }
-
     }
-
-
- 
-
-
-
-
 }

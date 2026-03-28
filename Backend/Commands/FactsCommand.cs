@@ -1,17 +1,13 @@
-﻿using Discord.WebSocket;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Discord.Interactions;
 
 namespace Backend.Commands
 {
-    internal class FactsCommand
+    internal class FactsModule : InteractionModuleBase<SocketInteractionContext>
     {
-        public static async Task HandleFactsCommand(SocketSlashCommand command)
+        [SlashCommand("facts", "Spits some facts")]
+        public async Task Facts()
         {
-            await command.RespondAsync($"Facts Command Handler, {command.Data.Options.First().Value}");
+            await RespondAsync("Facts Command Handler");
         }
     }
 }

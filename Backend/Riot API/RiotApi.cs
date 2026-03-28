@@ -1,39 +1,33 @@
-﻿using Discord.Commands;
-using Backend.JSONResponseTypes;
+﻿using Backend.JSONResponseTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
-using Backend;
 
 namespace Backend.RiotAPI
 {
     internal class RiotApi
     {
-        // Endpoints
-        private const string lolAccountEP = "https://americas.api.riotgames.com/riot/account/v1/accounts/by-riot-id/"; // Would need to make the region dynamic, can use active shard ep for the region maybe
-        private const string summonerByPuuidEP = "https://na1.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/";
-        private const string matchIdsEP = "https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/"; // Append "/ids" after the puuid to get matches
-        private const string matchDetailsEP = "https://americas.api.riotgames.com/lol/match/v5/matches/";
-
-        // Grabbing token and header name for riot api
-        private static readonly string apiKey = DiscordBotInitialization.Configs["RiotAPIToken"];
-        private static readonly string riotApiHeaderName = DiscordBotInitialization.Configs["RiotAPIHeaderName"];
+        private readonly string _apiKey;
+        private readonly string _riotApiHeaderName;
 
         private static HttpClient sharedClient = new();
 
-        public static async Task<string> GetRiotPUUID(string ign, string tagline)
+        public RiotApi(string apiKey, string riotApiHeaderName)
         {
-            string url = $"{lolAccountEP}{ign}/{tagline}";
+            _apiKey = apiKey;
+            _riotApiHeaderName = riotApiHeaderName;
+        }
+
+        public async Task<string> GetRiotPUUID(string ign, string tagline)
+        {
+            string url = $"{RiotApiEndpoints.AccountByRiotId}{ign}/{tagline}";
 
             HttpRequestMessage request = new();
             request.RequestUri = new Uri(url);
             request.Method = HttpMethod.Get;
-            request.Headers.Add(riotApiHeaderName, apiKey);
+            request.Headers.Add(_riotApiHeaderName, _apiKey);
             
             HttpResponseMessage response = await sharedClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -46,14 +40,14 @@ namespace Backend.RiotAPI
             return puuid;
         }
 
-        public static async Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid)
+        public async Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid)
         {
-            string url = $"{summonerByPuuidEP}{puuid}";
+            string url = $"{RiotApiEndpoints.SummonerByPuuid}{puuid}";
 
             HttpRequestMessage request = new();
             request.RequestUri = new Uri(url);
             request.Method = HttpMethod.Get;
-            request.Headers.Add(riotApiHeaderName, apiKey);
+            request.Headers.Add(_riotApiHeaderName, _apiKey);
 
             HttpResponseMessage response = await sharedClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -66,14 +60,14 @@ namespace Backend.RiotAPI
             return accountDetails;
         }
 
-        public static async Task<List<string>> GetMatchIds(string puuid, string queueType)
+        public async Task<List<string>> GetMatchIds(string puuid, string queueType)
         {
-            string url = $"{matchIdsEP}{puuid}/ids?type={queueType}";
+            string url = $"{RiotApiEndpoints.MatchIds}{puuid}/ids?type={queueType}";
 
             HttpRequestMessage request = new();
             request.RequestUri = new Uri(url);
             request.Method = HttpMethod.Get;
-            request.Headers.Add(riotApiHeaderName , apiKey);
+            request.Headers.Add(_riotApiHeaderName, _apiKey);
 
             HttpResponseMessage response = await sharedClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -85,14 +79,14 @@ namespace Backend.RiotAPI
             return matchIds;
         }
 
-        private static async Task<JObject> GetMatchDetails(string matchId)
+        private async Task<JObject> GetMatchDetails(string matchId)
         {
-            string url = $"{matchDetailsEP}{matchId}";
+            string url = $"{RiotApiEndpoints.MatchDetails}{matchId}";
 
             HttpRequestMessage request = new();
             request.RequestUri = new Uri(url);
             request.Method = HttpMethod.Get;
-            request.Headers.Add(riotApiHeaderName, apiKey);
+            request.Headers.Add(_riotApiHeaderName, _apiKey);
 
             HttpResponseMessage response = await sharedClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
@@ -103,7 +97,7 @@ namespace Backend.RiotAPI
             return jsonResponse;
         }
 
-        public static async Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid)
+        public async Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid)
         {
             float kda = 0;
 
