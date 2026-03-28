@@ -38,6 +38,15 @@ namespace Backend
                 await interactionService.RegisterCommandsGloballyAsync();
             };
 
+            interactionService.InteractionExecuted += async (_, ctx, result) =>
+            {
+                if (!result.IsSuccess)
+                {
+                    Console.WriteLine($"[Error] {ctx.Interaction.Id}: {result.ErrorReason}");
+                    await ctx.Interaction.FollowupAsync($"Something went wrong: {result.ErrorReason}");
+                }
+            };
+
             client.InteractionCreated += async interaction =>
             {
                 var ctx = new SocketInteractionContext(client, interaction);
