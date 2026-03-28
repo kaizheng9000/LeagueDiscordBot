@@ -6,9 +6,9 @@ namespace Backend.Commands
 {
     internal class KDAModule : InteractionModuleBase<SocketInteractionContext>
     {
-        private readonly RiotApi _riotApi;
+        private readonly IRiotApi _riotApi;
 
-        public KDAModule(RiotApi riotApi)
+        public KDAModule(IRiotApi riotApi)
         {
             _riotApi = riotApi;
         }

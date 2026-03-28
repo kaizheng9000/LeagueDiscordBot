@@ -1,16 +1,19 @@
 using Backend.JSONResponseTypes;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Backend.RiotAPI
 {
-    internal class RiotApi
+    internal class RiotApi : IRiotApi
     {
-        private readonly HttpClient _httpClient = new();
+        private readonly HttpClient _httpClient;
+        private readonly ILogger<RiotApi> _logger;
 
-        public RiotApi(string apiKey, string riotApiHeaderName)
+        public RiotApi(IHttpClientFactory httpClientFactory, ILogger<RiotApi> logger)
         {
-            _httpClient.DefaultRequestHeaders.Add(riotApiHeaderName, apiKey);
+            _httpClient = httpClientFactory.CreateClient("RiotApi");
+            _logger = logger;
         }
 
         public async Task<string> GetRiotPUUID(string ign, string tagline)

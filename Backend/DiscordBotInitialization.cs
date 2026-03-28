@@ -1,9 +1,8 @@
-using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Reflection;
+using Microsoft.Extensions.Hosting;
 using Backend.RiotAPI;
 
 namespace Backend
@@ -12,52 +11,29 @@ namespace Backend
     {
         public static async Task Main()
         {
-            var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("config.json", false, true)
-                .Build();
-
-            var services = new ServiceCollection()
-                .AddSingleton<DiscordSocketClient>()
-                .AddSingleton<InteractionService>()
-                .AddSingleton<RiotApi>(_ => new RiotApi(
-                    config["RiotAPIToken"] ?? throw new InvalidOperationException("RiotAPIToken is missing from config.json"),
-                    config["RiotAPIHeaderName"] ?? throw new InvalidOperationException("RiotAPIHeaderName is missing from config.json")
-                ))
-                .BuildServiceProvider();
-
-            var client = services.GetRequiredService<DiscordSocketClient>();
-            var interactionService = services.GetRequiredService<InteractionService>();
-
-            client.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
-            interactionService.Log += msg => { Console.WriteLine(msg); return Task.CompletedTask; };
-
-            client.Ready += async () =>
-            {
-                await interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
-                await interactionService.RegisterCommandsGloballyAsync();
-            };
-
-            interactionService.InteractionExecuted += async (_, ctx, result) =>
-            {
-                if (!result.IsSuccess)
+            await Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration(config =>
                 {
-                    Console.WriteLine($"[Error] {ctx.Interaction.Id}: {result.ErrorReason}");
-                    await ctx.Interaction.FollowupAsync($"Something went wrong: {result.ErrorReason}");
-                }
-            };
-
-            client.InteractionCreated += async interaction =>
-            {
-                var ctx = new SocketInteractionContext(client, interaction);
-                await interactionService.ExecuteCommandAsync(ctx, services);
-            };
-
-            await client.LoginAsync(TokenType.Bot,
-                config["DiscordBotToken"] ?? throw new InvalidOperationException("DiscordBotToken is missing from config.json"));
-            await client.StartAsync();
-
-            await Task.Delay(-1);
+                    config.SetBasePath(Directory.GetCurrentDirectory());
+                    config.AddJsonFile("config.json", false, true);
+                })
+                .ConfigureServices((ctx, services) =>
+                {
+                    services.AddSingleton<DiscordSocketClient>();
+                    services.AddSingleton<InteractionService>();
+                    services.AddHttpClient("RiotApi", (sp, client) =>
+                    {
+                        var config = sp.GetRequiredService<IConfiguration>();
+                        client.DefaultRequestHeaders.Add(
+                            config["RiotAPIHeaderName"] ?? throw new InvalidOperationException("RiotAPIHeaderName is missing from config.json"),
+                            config["RiotAPIToken"] ?? throw new InvalidOperationException("RiotAPIToken is missing from config.json")
+                        );
+                    });
+                    services.AddSingleton<IRiotApi, RiotApi>();
+                    services.AddHostedService<BotService>();
+                })
+                .Build()
+                .RunAsync();
         }
     }
 }
