@@ -1,127 +1,80 @@
-﻿using Backend.JSONResponseTypes;
+using Backend.JSONResponseTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Backend.RiotAPI
 {
     internal class RiotApi
     {
-        private readonly string _apiKey;
-        private readonly string _riotApiHeaderName;
-
-        private static HttpClient sharedClient = new();
+        private readonly HttpClient _httpClient = new();
 
         public RiotApi(string apiKey, string riotApiHeaderName)
         {
-            _apiKey = apiKey;
-            _riotApiHeaderName = riotApiHeaderName;
+            _httpClient.DefaultRequestHeaders.Add(riotApiHeaderName, apiKey);
         }
 
         public async Task<string> GetRiotPUUID(string ign, string tagline)
         {
-            string url = $"{RiotApiEndpoints.AccountByRiotId}{ign}/{tagline}";
-
-            HttpRequestMessage request = new();
-            request.RequestUri = new Uri(url);
-            request.Method = HttpMethod.Get;
-            request.Headers.Add(_riotApiHeaderName, _apiKey);
-            
-            HttpResponseMessage response = await sharedClient.SendAsync(request);
+            var response = await _httpClient.GetAsync(
+                $"{RiotApiEndpoints.AccountByRiotId}{Uri.EscapeDataString(ign)}/{Uri.EscapeDataString(tagline)}");
             response.EnsureSuccessStatusCode();
 
             var responseString = await response.Content.ReadAsStringAsync();
-            
-            // TODO: I'll handle errors later
-            string puuid = (string)JObject.Parse(responseString)["puuid"];
-    
-            return puuid;
+
+            return (string?)JObject.Parse(responseString)["puuid"]
+                ?? throw new InvalidOperationException($"No PUUID found for {ign}#{tagline}.");
         }
 
         public async Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid)
         {
-            string url = $"{RiotApiEndpoints.SummonerByPuuid}{puuid}";
-
-            HttpRequestMessage request = new();
-            request.RequestUri = new Uri(url);
-            request.Method = HttpMethod.Get;
-            request.Headers.Add(_riotApiHeaderName, _apiKey);
-
-            HttpResponseMessage response = await sharedClient.SendAsync(request);
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.SummonerByPuuid}{puuid}");
             response.EnsureSuccessStatusCode();
 
             var responseString = await response.Content.ReadAsStringAsync();
 
-            // TODO: Handle Errors
-            RiotAccountDetails accountDetails = JsonConvert.DeserializeObject<RiotAccountDetails>(responseString);
-
-            return accountDetails;
+            return JsonConvert.DeserializeObject<RiotAccountDetails>(responseString)
+                ?? throw new InvalidOperationException($"Failed to deserialize account details for PUUID {puuid}.");
         }
 
         public async Task<List<string>> GetMatchIds(string puuid, string queueType)
         {
-            string url = $"{RiotApiEndpoints.MatchIds}{puuid}/ids?type={queueType}";
-
-            HttpRequestMessage request = new();
-            request.RequestUri = new Uri(url);
-            request.Method = HttpMethod.Get;
-            request.Headers.Add(_riotApiHeaderName, _apiKey);
-
-            HttpResponseMessage response = await sharedClient.SendAsync(request);
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.MatchIds}{puuid}/ids?type={queueType}");
             response.EnsureSuccessStatusCode();
 
             var responseString = await response.Content.ReadAsStringAsync();
 
-            List<string> matchIds = JsonConvert.DeserializeObject<List<string>>(responseString);
-
-            return matchIds;
+            return JsonConvert.DeserializeObject<List<string>>(responseString)
+                ?? throw new InvalidOperationException($"Failed to deserialize match IDs for PUUID {puuid}.");
         }
 
         private async Task<JObject> GetMatchDetails(string matchId)
         {
-            string url = $"{RiotApiEndpoints.MatchDetails}{matchId}";
-
-            HttpRequestMessage request = new();
-            request.RequestUri = new Uri(url);
-            request.Method = HttpMethod.Get;
-            request.Headers.Add(_riotApiHeaderName, _apiKey);
-
-            HttpResponseMessage response = await sharedClient.SendAsync(request);
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.MatchDetails}{matchId}");
             response.EnsureSuccessStatusCode();
 
-            var responseString = await response.Content.ReadAsStringAsync();
-            JObject jsonResponse = JObject.Parse(responseString);
-
-            return jsonResponse;
+            return JObject.Parse(await response.Content.ReadAsStringAsync());
         }
 
         public async Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid)
         {
-            float kda = 0;
+            if (matchIds.Count == 0)
+                return "0.00";
 
-            await Task.Run(async () =>
-            { 
-                foreach(string matchId in matchIds) 
-                {
-                    Task<JObject> getMatchDetails = GetMatchDetails(matchId);
-                    JObject matchDetails = await getMatchDetails;
-                    // grab kda         
-                    var matchInfo = 
-                        JArray.Parse(JsonConvert.SerializeObject(matchDetails.SelectToken("info").SelectToken("participants")))
-                        .Where(player => (string)player["puuid"] == puuid).ToList();
-                         
-                    float stat = (float)matchInfo.Select(info => info["challenges"]).Select(challenge => challenge["kda"]).ToList()[0];
+            var matchDetails = await Task.WhenAll(matchIds.Select(GetMatchDetails));
 
-                    kda += stat;
-                }
+            float kda = matchDetails.Sum(match =>
+            {
+                var participants = (JArray)(match.SelectToken("info.participants")
+                    ?? throw new InvalidOperationException("Match data missing 'info.participants'."));
+                return (float)(participants
+                    .First(player => (string?)player["puuid"] == puuid)
+                    .SelectToken("challenges.kda")
+                    ?? throw new InvalidOperationException("Match data missing 'challenges.kda'."));
             });
 
-            kda /= 20;
-            
+            kda /= matchIds.Count;
+
             return kda.ToString("0.00");
         }
-
     }
 }
