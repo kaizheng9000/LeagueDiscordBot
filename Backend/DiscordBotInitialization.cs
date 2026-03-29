@@ -1,9 +1,11 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Backend.Database;
 using Backend.RiotAPI;
 
 namespace Backend
@@ -34,6 +36,8 @@ namespace Backend
                             config["RiotAPIToken"] ?? throw new InvalidOperationException("RiotAPIToken is missing from config.json")
                         );
                     });
+                    services.AddDbContext<BotDbContext>(options =>
+                        options.UseSqlite("Data Source=/home/ubuntu/bot-data/bot.db"));
                     services.AddSingleton<IRiotApi, RiotApi>();
                     services.AddHostedService<BotService>();
                 })

@@ -8,12 +8,12 @@ namespace Backend.JSONResponseTypes
 {
     public class RiotAccountDetails
     {
-        string Id { get; set; } // This is called the encrypted summoner id on riots docs
-        string AccountId { get; set; }
-        string PuuId { get; set; }
-        string ProfileIconId { get; set; }
-        string RevisionDate { get; set; }
-        string SummonerLevel { get; set; }
+        public string Id { get; set; } // This is called the encrypted summoner id on riots docs
+        public string AccountId { get; set; }
+        public string PuuId { get; set; }
+        public string ProfileIconId { get; set; }
+        public string RevisionDate { get; set; }
+        public string SummonerLevel { get; set; }
 
         public RiotAccountDetails(string id = "", string accountId = "", string puuId = "", string profileIconId = "", string revisionDate = "", string summonerLevel = "")
         {
