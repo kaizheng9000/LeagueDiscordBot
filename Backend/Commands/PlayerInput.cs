@@ -20,13 +20,13 @@ namespace Backend.Commands
 
             if (ign.Length < 3 || ign.Length > 16)
             {
-                error = "IGN must be between 3 and 16 characters.";
+                error = $"`{ign}` is not a valid IGN. Must be between 3 and 16 characters.";
                 return false;
             }
 
             if (tagline.Length < 2 || tagline.Length > 5)
             {
-                error = "Tagline must be between 2 and 5 characters.";
+                error = $"`{tagline}` is not a valid tagline. Must be between 2 and 5 characters.";
                 return false;
             }
 
