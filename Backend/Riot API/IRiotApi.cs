@@ -9,6 +9,7 @@ namespace Backend.RiotAPI
         Task<List<string>> GetMatchIds(string puuid, string queueType);
         Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid);
         Task<string> GetRank(string puuid);
-        Task<string> GetTopChampion(string puuid);
+        Task<List<string>> GetTopChampions(string puuid);
+        Task<string> GetProfileIconUrl(int iconId);
     }
 }

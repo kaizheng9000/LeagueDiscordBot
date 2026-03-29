@@ -16,6 +16,7 @@ namespace Backend.RiotAPI
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly Dictionary<(string Ign, string Tagline), string> _puuidCache = new();
         private Dictionary<int, string>? _championIdMap;
+        private string? _latestDDragonVersion;
 
         public RiotApi(IHttpClientFactory httpClientFactory, ILogger<RiotApi> logger, IServiceScopeFactory scopeFactory)
         {
@@ -155,33 +156,52 @@ namespace Backend.RiotAPI
             return $"{FormatEntry(solo, "Solo/Duo")}\n{FormatEntry(flex, "Flex")}";
         }
 
-        public async Task<string> GetTopChampion(string puuid)
+        public async Task<List<string>> GetTopChampions(string puuid)
         {
-            _logger.LogDebug("Fetching top champion for PUUID {PUUID}", puuid);
+            _logger.LogDebug("Fetching top champions for PUUID {PUUID}", puuid);
 
-            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.TopChampionMastery}{puuid}/top?count=1");
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.TopChampionMastery}{puuid}/top?count=3");
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"TopChampionMastery returned {(int)response.StatusCode} for puuid={puuid}");
 
             var masteries = JsonConvert.DeserializeObject<JArray>(await response.Content.ReadAsStringAsync())
                 ?? throw new InvalidOperationException($"Failed to deserialize champion mastery for PUUID {puuid}.");
 
-            if (!masteries.Any())
-                return "None";
+            if (masteries.Count == 0)
+                return ["None"];
 
-            int championId = (int)(masteries[0]["championId"] ?? 0);
-            return await GetChampionNameById(championId);
+            var names = new List<string>();
+            foreach (var mastery in masteries)
+            {
+                int championId = (int)(mastery["championId"] ?? 0);
+                names.Add(await GetChampionNameById(championId));
+            }
+            return names;
+        }
+
+        public async Task<string> GetProfileIconUrl(int iconId)
+        {
+            var version = await GetLatestDDragonVersion();
+            return $"https://ddragon.leagueoflegends.com/cdn/{version}/img/profileicon/{iconId}.png";
+        }
+
+        private async Task<string> GetLatestDDragonVersion()
+        {
+            if (_latestDDragonVersion != null)
+                return _latestDDragonVersion;
+
+            var versionsResponse = await _plainHttpClient.GetAsync(RiotApiEndpoints.DDragonVersions);
+            versionsResponse.EnsureSuccessStatusCode();
+            var versions = JsonConvert.DeserializeObject<JArray>(await versionsResponse.Content.ReadAsStringAsync());
+            _latestDDragonVersion = (string?)versions?[0] ?? throw new InvalidOperationException("Failed to fetch Data Dragon versions.");
+            return _latestDDragonVersion;
         }
 
         private async Task<string> GetChampionNameById(int championId)
         {
             if (_championIdMap == null)
             {
-                var versionsResponse = await _plainHttpClient.GetAsync(RiotApiEndpoints.DDragonVersions);
-                versionsResponse.EnsureSuccessStatusCode();
-                var versions = JsonConvert.DeserializeObject<JArray>(await versionsResponse.Content.ReadAsStringAsync());
-                string latestVersion = (string?)versions?[0] ?? throw new InvalidOperationException("Failed to fetch Data Dragon versions.");
-
+                var latestVersion = await GetLatestDDragonVersion();
                 var championsResponse = await _plainHttpClient.GetStringAsync(string.Format(RiotApiEndpoints.DDragonChampions, latestVersion));
                 var championsJson = JObject.Parse(championsResponse)["data"] as JObject
                     ?? throw new InvalidOperationException("Failed to parse champion data.");
