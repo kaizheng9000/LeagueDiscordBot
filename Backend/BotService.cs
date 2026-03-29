@@ -1,7 +1,10 @@
+using Backend.Database;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -15,23 +18,32 @@ namespace Backend
         private readonly IServiceProvider _services;
         private readonly IConfiguration _config;
         private readonly ILogger<BotService> _logger;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public BotService(
             DiscordSocketClient client,
             InteractionService interactionService,
             IServiceProvider services,
             IConfiguration config,
-            ILogger<BotService> logger)
+            ILogger<BotService> logger,
+            IServiceScopeFactory scopeFactory)
         {
             _client = client;
             _interactionService = interactionService;
             _services = services;
             _config = config;
             _logger = logger;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
+                await db.Database.EnsureCreatedAsync(cancellationToken);
+            }
+
             _client.Log += LogDiscord;
             _interactionService.Log += LogDiscord;
 

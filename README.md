@@ -4,10 +4,33 @@ A Discord bot that fetches League of Legends player stats using the Riot Games A
 
 ## Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10)
 - A Discord bot token from the [Discord Developer Portal](https://discord.com/developers/applications)
 - A Riot Games API key from the [Riot Developer Portal](https://developer.riotgames.com)
 - Your Oracle VM SSH private key
+- [Git Bash](https://git-scm.com/downloads) (Windows only — Mac has bash built in)
+
+### Windows: Install rsync for faster deploys
+
+Git Bash on Windows does not include `rsync` by default. Without it, deploys will fall back to `scp` and copy all files every time. To get fast incremental deploys, install `rsync` via [MSYS2](https://www.msys2.org):
+
+1. Install [MSYS2](https://www.msys2.org)
+2. Open the MSYS2 terminal and run:
+```bash
+pacman -S rsync
+```
+3. Copy `rsync.exe` and its dependencies to your Git Bash `bin` folder (usually `C:\Program Files\Git\usr\bin\`):
+```
+C:\msys64\usr\bin\rsync.exe
+C:\msys64\usr\bin\msys-iconv-2.dll
+C:\msys64\usr\bin\msys-intl-8.dll
+C:\msys64\usr\bin\msys-2.0.dll
+C:\msys64\usr\bin\msys-xxhash-0.8.3.dll
+C:\msys64\usr\bin\msys-zstd-1.dll
+C:\msys64\usr\bin\msys-lz4-1.dll
+```
+
+> If you skip this, deploys still work — they just copy every file each time.
 
 ## Fresh Machine Setup
 
@@ -84,12 +107,17 @@ If you ever need to set up the VM from scratch:
 
 1. Create a new Oracle Cloud VM (Ubuntu 22.04, VM.Standard.E2.1.Micro)
 2. Assign a public IP to the VNIC
-3. SSH in and install the .NET 8 runtime:
+3. SSH in and install the .NET 10 runtime and create the data directory:
 ```bash
-sudo apt update && sudo apt install -y dotnet-runtime-8.0
+sudo apt update && sudo apt install -y dotnet-runtime-10.0
+mkdir -p ~/bot-data
 ```
-4. Run `deploy-bot` to deploy the bot
-5. Set up the systemd service:
+4. Copy your `config.json` with real credentials to the VM:
+```bash
+scp -i "$ORACLE_SSH_KEY" Backend/config.json ubuntu@<VM_IP>:~/bot/config.json
+```
+5. Run `deploy-bot` to deploy the bot
+6. Set up the systemd service:
 ```bash
 sudo nano /etc/systemd/system/leaguediscordbot.service
 ```

@@ -7,10 +7,14 @@ VM_IP="129.146.192.186"
 
 echo "Building and publishing..."
 cd "$(dirname "$0")/../Backend"
-dotnet publish -c Release -o ./publish
+dotnet publish -c Release -r linux-x64 --no-self-contained -o ./publish
 
 echo "Copying files to VM..."
-scp -i "$SSH_KEY" -r ./publish/* "$VM_USER@$VM_IP:~/bot"
+if command -v rsync &> /dev/null; then
+    rsync -az --delete -e "ssh -i \"$SSH_KEY\"" ./publish/ "$VM_USER@$VM_IP:~/bot/"
+else
+    scp -i "$SSH_KEY" -r ./publish/* "$VM_USER@$VM_IP:~/bot"
+fi
 
 echo "Restarting bot..."
 ssh -i "$SSH_KEY" "$VM_USER@$VM_IP" "sudo systemctl restart leaguediscordbot"
