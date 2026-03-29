@@ -37,7 +37,7 @@ namespace Backend.Commands
 
             return (ign, tagline, null, null);
         }
-        private static readonly string[] ValidQueueTypes = ["normal", "ranked"];
+        private static readonly string[] ValidQueueTypes = ["normal", "solo", "flex"];
 
         internal static bool TryParse(string player, out string ign, out string tagline, out string? error)
         {
@@ -73,7 +73,7 @@ namespace Backend.Commands
         {
             if (!ValidQueueTypes.Contains(queueType.ToLower()))
             {
-                error = $"Invalid queue type `{queueType}`. Valid options are: `normal`, `ranked`.";
+                error = $"Invalid queue type `{queueType}`. Valid options are: `normal`, `solo`, `flex`.";
                 return false;
             }
 

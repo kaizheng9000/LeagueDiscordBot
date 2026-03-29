@@ -104,10 +104,11 @@ namespace Backend.RiotAPI
             var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
 
             var cached = await db.Summoners.FirstOrDefaultAsync(s => s.Puuid == puuid);
-            if (cached != null && cached.SummonerId != account.Id)
+            if (cached != null && (cached.SummonerId != account.Id || cached.ProfileIconId != account.ProfileIconId))
             {
                 _logger.LogInformation("Summoner data changed for PUUID {PUUID}, updating cache", puuid);
                 cached.SummonerId = account.Id;
+                cached.ProfileIconId = account.ProfileIconId;
                 await db.SaveChangesAsync();
             }
 
@@ -121,9 +122,18 @@ namespace Backend.RiotAPI
             var response = await _httpClient.GetAsync($"{RiotApiEndpoints.MatchIds}{puuid}/ids?type={queueType}");
             response.EnsureSuccessStatusCode();
 
-            var responseString = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<List<string>>(await response.Content.ReadAsStringAsync())
+                ?? throw new InvalidOperationException($"Failed to deserialize match IDs for PUUID {puuid}.");
+        }
 
-            return JsonConvert.DeserializeObject<List<string>>(responseString)
+        public async Task<List<string>> GetMatchIdsByQueue(string puuid, int queueId)
+        {
+            _logger.LogDebug("Fetching queue {QueueId} match IDs for PUUID {PUUID}", queueId, puuid);
+
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.MatchIds}{puuid}/ids?queue={queueId}");
+            response.EnsureSuccessStatusCode();
+
+            return JsonConvert.DeserializeObject<List<string>>(await response.Content.ReadAsStringAsync())
                 ?? throw new InvalidOperationException($"Failed to deserialize match IDs for PUUID {puuid}.");
         }
 
@@ -194,6 +204,15 @@ namespace Backend.RiotAPI
         {
             var version = await GetLatestDDragonVersion();
             return $"https://ddragon.leagueoflegends.com/cdn/{version}/img/profileicon/{iconId}.png";
+        }
+
+        public async Task<string> GetProfileIconUrlCached(string puuid)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
+            var cached = await db.Summoners.FirstOrDefaultAsync(s => s.Puuid == puuid);
+            int iconId = cached?.ProfileIconId ?? 0;
+            return await GetProfileIconUrl(iconId);
         }
 
         private async Task<string> GetLatestDDragonVersion()

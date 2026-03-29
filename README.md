@@ -97,7 +97,7 @@ dotnet run
 
 | Command                     | Description                                                                                                                                     |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/kda [player] [queueType]` | Average KDA over last 20 matches. Queue type defaults to normal, use `ranked` for ranked only. Leave `player` blank to use your linked account. |
+| `/kda [player] [queueType]` | Average KDA over last 20 matches. Queue type: `normal` (default), `solo` (ranked solo/duo), `flex` (ranked flex). Leave `player` blank to use your linked account. |
 | `/info [player]`            | Account overview — level, solo/duo rank, flex rank, and top 3 most played champions. Leave `player` blank to use your linked account.           |
 | `/link [player]`            | Link your Discord account to your League IGN for use with `/kda` and `/info` without specifying a player.                                       |
 | `/unlink`                   | Unlink your Discord account from your League IGN.                                                                                               |

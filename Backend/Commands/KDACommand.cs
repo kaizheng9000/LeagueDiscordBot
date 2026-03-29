@@ -19,7 +19,7 @@ namespace Backend.Commands
         [SlashCommand("kda", "Average KDA of player (Default Region is NA)")]
         public async Task KDA(
             [Summary(description: "IGN and tagline in Faker#NA1 format. Leave blank to use your linked account."), Autocomplete(typeof(PlayerAutocompleteHandler))] string? player = null,
-            [Summary(description: "The queue type to look in. Default is normal rift. Input \"ranked\" for ranked only.")] string queueType = "normal")
+            [Summary(description: "Queue type: normal, solo (ranked solo/duo), or flex (ranked flex). Defaults to normal.")] string queueType = "normal")
         {
             await DeferAsync();
 
@@ -37,13 +37,27 @@ namespace Backend.Commands
             }
 
             string puuid = resolvedPuuid ?? await _riotApi.GetRiotPUUID(ign!, tagline!);
-            List<string> matchIds = await _riotApi.GetMatchIds(puuid, queueType);
+            string iconUrl = await _riotApi.GetProfileIconUrlCached(puuid);
+
+            List<string> matchIds = queueType.ToLower() switch
+            {
+                "solo" => await _riotApi.GetMatchIdsByQueue(puuid, 420),
+                "flex" => await _riotApi.GetMatchIdsByQueue(puuid, 440),
+                _      => await _riotApi.GetMatchIds(puuid, "normal")
+            };
+
             string avgKDA = await _riotApi.GetAvgKDAFromMatches(matchIds, puuid);
 
-            var queueLabel = queueType.Equals("ranked", StringComparison.OrdinalIgnoreCase) ? "Ranked" : "Normal";
+            string queueLabel = queueType.ToLower() switch
+            {
+                "solo" => "Ranked Solo/Duo",
+                "flex" => "Ranked Flex",
+                _      => "Normal"
+            };
 
             var embed = new EmbedBuilder()
                 .WithTitle($"{ign}#{tagline}")
+                .WithThumbnailUrl(iconUrl)
                 .AddField("Queue", queueLabel, inline: true)
                 .AddField("Matches Analysed", matchIds.Count, inline: true)
                 .AddField("Average KDA", avgKDA, inline: true)

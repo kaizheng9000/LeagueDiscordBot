@@ -51,6 +51,13 @@ namespace Backend
                         Ign TEXT NOT NULL,
                         Tagline TEXT NOT NULL
                     )", cancellationToken);
+                try
+                {
+                    await db.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE Summoners ADD COLUMN ProfileIconId INTEGER NOT NULL DEFAULT 0",
+                        cancellationToken);
+                }
+                catch { /* column already exists */ }
             }
 
             _client.Log += LogDiscord;

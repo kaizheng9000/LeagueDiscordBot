@@ -8,9 +8,11 @@ namespace Backend.RiotAPI
         Task<(string ign, string tagline)> GetCurrentName(string puuid);
         Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid);
         Task<List<string>> GetMatchIds(string puuid, string queueType);
+        Task<List<string>> GetMatchIdsByQueue(string puuid, int queueId);
         Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid);
         Task<string> GetRank(string puuid);
         Task<List<string>> GetTopChampions(string puuid);
         Task<string> GetProfileIconUrl(int iconId);
+        Task<string> GetProfileIconUrlCached(string puuid);
     }
 }
