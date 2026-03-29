@@ -76,7 +76,7 @@ namespace Backend
             _client.Ready += async () =>
             {
                 await _interactionService.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
-                await _interactionService.RegisterCommandsGloballyAsync();
+                await _interactionService.RegisterCommandsGloballyAsync(deleteMissing: true);
             };
 
             _client.InteractionCreated += async interaction =>
