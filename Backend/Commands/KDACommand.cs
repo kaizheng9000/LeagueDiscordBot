@@ -4,7 +4,7 @@ using Backend.JSONResponseTypes;
 
 namespace Backend.Commands
 {
-    internal class KDAModule : InteractionModuleBase<SocketInteractionContext>
+    public class KDAModule : InteractionModuleBase<SocketInteractionContext>
     {
         private readonly IRiotApi _riotApi;
 

@@ -1,3 +1,4 @@
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
@@ -19,8 +20,12 @@ namespace Backend
                 })
                 .ConfigureServices((ctx, services) =>
                 {
-                    services.AddSingleton<DiscordSocketClient>();
-                    services.AddSingleton<InteractionService>();
+                    services.AddSingleton(_ => new DiscordSocketClient(new DiscordSocketConfig
+                    {
+                        GatewayIntents = GatewayIntents.None
+                    }));
+                    services.AddSingleton<InteractionService>(sp =>
+                        new InteractionService(sp.GetRequiredService<DiscordSocketClient>()));
                     services.AddHttpClient("RiotApi", (sp, client) =>
                     {
                         var config = sp.GetRequiredService<IConfiguration>();

@@ -2,7 +2,7 @@ using Backend.JSONResponseTypes;
 
 namespace Backend.RiotAPI
 {
-    internal interface IRiotApi
+    public interface IRiotApi
     {
         Task<string> GetRiotPUUID(string ign, string tagline);
         Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid);

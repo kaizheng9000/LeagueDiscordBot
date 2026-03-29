@@ -2,7 +2,7 @@ using Discord.Interactions;
 
 namespace Backend.Commands
 {
-    internal class FactsModule : InteractionModuleBase<SocketInteractionContext>
+    public class FactsModule : InteractionModuleBase<SocketInteractionContext>
     {
         [SlashCommand("facts", "Spits some facts")]
         public async Task Facts()
