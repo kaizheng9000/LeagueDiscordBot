@@ -20,15 +20,11 @@ namespace Backend.Commands
         {
             await DeferAsync();
 
-            var parts = player.Split('#', 2);
-            if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            if (!PlayerInput.TryParse(player, out string ign, out string tagline))
             {
                 await FollowupAsync("Invalid format. Please use `IGN#Tagline` (e.g. `Faker#NA1`).");
                 return;
             }
-
-            string ign = parts[0].Trim();
-            string tagline = parts[1].Trim();
 
             string puuid = await _riotApi.GetRiotPUUID(ign, tagline);
             RiotAccountDetails account = await _riotApi.GetAccountDetailsByPUUID(puuid);

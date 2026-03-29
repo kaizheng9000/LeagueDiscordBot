@@ -53,7 +53,6 @@ namespace Backend.RiotAPI
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                _puuidCache.Remove(key);
                 if (cached != null)
                 {
                     db.Summoners.Remove(cached);

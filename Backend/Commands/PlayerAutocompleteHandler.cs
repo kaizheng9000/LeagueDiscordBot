@@ -19,8 +19,9 @@ namespace Backend.Commands
             using var scope = services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
 
+            var lowerInput = input.ToLower();
             var results = await db.Summoners
-                .Where(s => (s.Ign + "#" + s.Tagline).ToLower().Contains(input.ToLower()))
+                .Where(s => (s.Ign + "#" + s.Tagline).ToLower().Contains(lowerInput))
                 .Take(25)
                 .Select(s => new AutocompleteResult($"{s.Ign}#{s.Tagline}", $"{s.Ign}#{s.Tagline}"))
                 .ToListAsync();
