@@ -1,6 +1,6 @@
-using Discord.Interactions;
-using Backend.RiotAPI;
 using Backend.JSONResponseTypes;
+using Backend.RiotAPI;
+using Discord.Interactions;
 
 namespace Backend.Commands
 {
@@ -15,11 +15,20 @@ namespace Backend.Commands
 
         [SlashCommand("kda", "Average KDA of player (Default Region is NA)")]
         public async Task KDA(
-            [Summary(description: "The IGN to search up.")] string ign,
-            [Summary(description: "The Tag Line of the associated IGN (Exclude the hashtag) (EX: NA1).")] string tagline,
+            [Summary(description: "IGN and tagline in Faker#NA1 format."), Autocomplete(typeof(PlayerAutocompleteHandler))] string player,
             [Summary(description: "The queue type to look in. Default is normal rift. Input \"ranked\" for ranked only.")] string queueType = "normal")
         {
             await DeferAsync();
+
+            var parts = player.Split('#', 2);
+            if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            {
+                await FollowupAsync("Invalid format. Please use `IGN#Tagline` (e.g. `Faker#NA1`).");
+                return;
+            }
+
+            string ign = parts[0].Trim();
+            string tagline = parts[1].Trim();
 
             string puuid = await _riotApi.GetRiotPUUID(ign, tagline);
             RiotAccountDetails account = await _riotApi.GetAccountDetailsByPUUID(puuid);
@@ -29,4 +38,5 @@ namespace Backend.Commands
             await FollowupAsync($"IGN: {ign} #{tagline} \nKDA: {avgKDA}");
         }
     }
+
 }

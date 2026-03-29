@@ -42,7 +42,9 @@ The `Backend/config.json` file is not committed to the repo. Fill in your creden
 {
   "DiscordBotToken": "<your-discord-bot-token>",
   "RiotAPIToken": "<your-riot-api-key>",
-  "RiotAPIHeaderName": "X-Riot-Token"
+  "RiotAPIHeaderName": "X-Riot-Token",
+  "ErrorWebhookUrl": "<your-discord-error-webhook-url>",
+  "DatabasePath": "/home/ubuntu/bot-data/bot.db"
 }
 ```
 

@@ -11,12 +11,15 @@ namespace Backend.RiotAPI
     internal class RiotApi : IRiotApi
     {
         private readonly HttpClient _httpClient;
+        private readonly HttpClient _plainHttpClient;
         private readonly ILogger<RiotApi> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
+        private Dictionary<int, string>? _championIdMap;
 
         public RiotApi(IHttpClientFactory httpClientFactory, ILogger<RiotApi> logger, IServiceScopeFactory scopeFactory)
         {
             _httpClient = httpClientFactory.CreateClient("RiotApi");
+            _plainHttpClient = httpClientFactory.CreateClient();
             _logger = logger;
             _scopeFactory = scopeFactory;
         }
@@ -37,6 +40,18 @@ namespace Backend.RiotAPI
 
             var response = await _httpClient.GetAsync(
                 $"{RiotApiEndpoints.AccountByRiotId}{Uri.EscapeDataString(ign)}/{Uri.EscapeDataString(tagline)}");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                if (cached != null)
+                {
+                    db.Summoners.Remove(cached);
+                    await db.SaveChangesAsync();
+                    _logger.LogInformation("Removed stale cache entry for {IGN}#{Tagline}", ign, tagline);
+                }
+                throw new InvalidOperationException($"Player {ign}#{tagline} not found.");
+            }
+
             response.EnsureSuccessStatusCode();
 
             var responseString = await response.Content.ReadAsStringAsync();
@@ -66,7 +81,7 @@ namespace Backend.RiotAPI
             var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
 
             var cached = await db.Summoners.FirstOrDefaultAsync(s => s.Puuid == puuid);
-            if (cached != null && (cached.Ign != account.Id || cached.SummonerId != account.Id))
+            if (cached != null && cached.SummonerId != account.Id)
             {
                 _logger.LogInformation("Summoner data changed for PUUID {PUUID}, updating cache", puuid);
                 cached.SummonerId = account.Id;
@@ -97,6 +112,69 @@ namespace Backend.RiotAPI
             response.EnsureSuccessStatusCode();
 
             return JObject.Parse(await response.Content.ReadAsStringAsync());
+        }
+
+        public async Task<string> GetRank(string puuid)
+        {
+            _logger.LogDebug("Fetching rank for PUUID {PUUID}", puuid);
+
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.LeagueEntriesByPuuid}{puuid}");
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"LeagueEntries returned {(int)response.StatusCode} for puuid={puuid}");
+
+            var entries = JsonConvert.DeserializeObject<JArray>(await response.Content.ReadAsStringAsync())
+                ?? throw new InvalidOperationException($"Failed to deserialize league entries for PUUID {puuid}.");
+
+            var solo = entries.FirstOrDefault(e => (string?)e["queueType"] == "RANKED_SOLO_5x5");
+            if (solo == null)
+                return "Unranked";
+
+            string tier = (string?)solo["tier"] ?? "Unranked";
+            string rank = (string?)solo["rank"] ?? "";
+            int lp = (int)(solo["leaguePoints"] ?? 0);
+
+            return $"{tier} {rank} {lp} LP";
+        }
+
+        public async Task<string> GetTopChampion(string puuid)
+        {
+            _logger.LogDebug("Fetching top champion for PUUID {PUUID}", puuid);
+
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.TopChampionMastery}{puuid}/top?count=1");
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"TopChampionMastery returned {(int)response.StatusCode} for puuid={puuid}");
+
+            var masteries = JsonConvert.DeserializeObject<JArray>(await response.Content.ReadAsStringAsync())
+                ?? throw new InvalidOperationException($"Failed to deserialize champion mastery for PUUID {puuid}.");
+
+            if (!masteries.Any())
+                return "None";
+
+            int championId = (int)(masteries[0]["championId"] ?? 0);
+            return await GetChampionNameById(championId);
+        }
+
+        private async Task<string> GetChampionNameById(int championId)
+        {
+            if (_championIdMap == null)
+            {
+                var versionsResponse = await _plainHttpClient.GetAsync(RiotApiEndpoints.DDragonVersions);
+                versionsResponse.EnsureSuccessStatusCode();
+                var versions = JsonConvert.DeserializeObject<JArray>(await versionsResponse.Content.ReadAsStringAsync());
+                string latestVersion = (string?)versions?[0] ?? throw new InvalidOperationException("Failed to fetch Data Dragon versions.");
+
+                var championsResponse = await _plainHttpClient.GetStringAsync(string.Format(RiotApiEndpoints.DDragonChampions, latestVersion));
+                var championsJson = JObject.Parse(championsResponse)["data"] as JObject
+                    ?? throw new InvalidOperationException("Failed to parse champion data.");
+
+                _championIdMap = championsJson.Properties()
+                    .ToDictionary(
+                        p => (int)p.Value["key"]!,
+                        p => p.Value["name"]!.ToString()
+                    );
+            }
+
+            return _championIdMap.TryGetValue(championId, out var name) ? name : championId.ToString();
         }
 
         public async Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid)

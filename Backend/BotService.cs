@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net.Http.Json;
 using System.Reflection;
 
 namespace Backend
@@ -19,6 +20,7 @@ namespace Backend
         private readonly IConfiguration _config;
         private readonly ILogger<BotService> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly HttpClient _webhookClient = new();
 
         public BotService(
             DiscordSocketClient client,
@@ -53,6 +55,7 @@ namespace Backend
                 {
                     _logger.LogError("Command failed [{InteractionId}]: {Error}", ctx.Interaction.Id, result.ErrorReason);
                     await ctx.Interaction.FollowupAsync($"Something went wrong: {result.ErrorReason}");
+                    await PostToErrorWebhook(ctx, result);
                 }
             };
 
@@ -79,17 +82,70 @@ namespace Backend
             await _client.StopAsync();
         }
 
+        private static readonly string[] ClapTrapIntros =
+        [
+            "MINION! Something broke!",
+            "Aaaand it's broken.",
+            "I did NOT do that.",
+            "This is fine. IT'S NOT FINE.",
+            "Oh no. Oh no no no.",
+            "I blame the minion.",
+            "Fuck.",
+            "NOT MY FAULT.",
+            "I'm... gonna need a minute.",
+            "WHAT DID YOU DO?",
+            "This is why we can't have nice things.",
+        ];
+
+        private async Task PostToErrorWebhook(IInteractionContext ctx, IResult result)
+        {
+            var webhookUrl = _config["ErrorWebhookUrl"];
+            if (string.IsNullOrEmpty(webhookUrl)) return;
+
+            var user = ctx.User.Username;
+            string command = "unknown";
+            string parameters = "";
+
+            if (ctx.Interaction is SocketSlashCommand slash)
+            {
+                command = $"/{slash.CommandName}";
+                var options = slash.Data.Options;
+                if (options.Count > 0)
+                    parameters = string.Join(", ", options.Select(o => $"{o.Name}={o.Value}"));
+            }
+
+            var detail = result is ExecuteResult { Exception: not null } execResult
+                ? GetExceptionDetail(execResult.Exception)
+                : result.ErrorReason;
+
+            var intro = ClapTrapIntros[Random.Shared.Next(ClapTrapIntros.Length)];
+            var paramLine = string.IsNullOrEmpty(parameters) ? "" : $"\nParams: `{parameters}`";
+            var message = $"{intro}\n**Command failed**\nUser: `{user}`\nCommand: `{command}`{paramLine}\n```\n{detail}\n```";
+
+            await _webhookClient.PostAsJsonAsync(webhookUrl, new { content = message });
+        }
+
+        private static string GetExceptionDetail(Exception ex)
+        {
+            var root = ex.InnerException ?? ex;
+            var method = root.TargetSite;
+            var location = method != null
+                ? $"{method.DeclaringType?.Name}.{method.Name}"
+                : "unknown";
+            return $"{root.GetType().Name}: {root.Message}\nat {location}";
+        }
+
         private Task LogDiscord(LogMessage msg)
         {
             var level = msg.Severity switch
             {
                 LogSeverity.Critical => LogLevel.Critical,
-                LogSeverity.Error    => LogLevel.Error,
-                LogSeverity.Warning  => LogLevel.Warning,
-                LogSeverity.Info     => LogLevel.Information,
-                LogSeverity.Verbose  => LogLevel.Trace,
-                LogSeverity.Debug    => LogLevel.Debug,
-                _                    => LogLevel.Information
+                LogSeverity.Error => LogLevel.Error,
+                LogSeverity.Warning => LogLevel.Warning,
+                LogSeverity.Info => LogLevel.Information,
+                LogSeverity.Verbose => LogLevel.Trace,
+                LogSeverity.Debug => LogLevel.Debug,
+                _ => LogLevel.Information
             };
             _logger.Log(level, msg.Exception, "{Message}", msg.Message);
             return Task.CompletedTask;

@@ -37,7 +37,11 @@ namespace Backend
                         );
                     });
                     services.AddDbContext<BotDbContext>(options =>
-                        options.UseSqlite("Data Source=/home/ubuntu/bot-data/bot.db"));
+                    {
+                        var dbPath = ctx.Configuration["DatabasePath"]
+                            ?? throw new InvalidOperationException("DatabasePath is missing from config.json");
+                        options.UseSqlite($"Data Source={dbPath}");
+                    });
                     services.AddSingleton<IRiotApi, RiotApi>();
                     services.AddHostedService<BotService>();
                 })
