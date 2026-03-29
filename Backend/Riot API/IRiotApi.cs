@@ -5,6 +5,7 @@ namespace Backend.RiotAPI
     public interface IRiotApi
     {
         Task<string> GetRiotPUUID(string ign, string tagline);
+        Task<(string ign, string tagline)> GetCurrentName(string puuid);
         Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid);
         Task<List<string>> GetMatchIds(string puuid, string queueType);
         Task<string> GetAvgKDAFromMatches(List<string> matchIds, string puuid);

@@ -1,7 +1,42 @@
+using Backend.Database;
+using Backend.RiotAPI;
+using Discord;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Backend.Commands
 {
     internal static class PlayerInput
     {
+        internal static async Task<(string? ign, string? tagline, string? puuid, string? error)> ResolveAsync(
+            string? player, IInteractionContext context, IServiceScopeFactory scopeFactory, IRiotApi riotApi)
+        {
+            if (string.IsNullOrWhiteSpace(player))
+            {
+                using var scope = scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
+                var linked = await db.LinkedAccounts.FirstOrDefaultAsync(
+                    l => l.DiscordUserId == context.User.Id.ToString());
+
+                if (linked == null)
+                    return (null, null, null, "You don't have a linked account. Use `/link` to set one, or provide a player name.");
+
+                var (currentIgn, currentTagline) = await riotApi.GetCurrentName(linked.Puuid);
+                if (currentIgn != linked.Ign || currentTagline != linked.Tagline)
+                {
+                    linked.Ign = currentIgn;
+                    linked.Tagline = currentTagline;
+                    await db.SaveChangesAsync();
+                }
+
+                return (currentIgn, currentTagline, linked.Puuid, null);
+            }
+
+            if (!TryParse(player, out string ign, out string tagline, out string? error))
+                return (null, null, null, error);
+
+            return (ign, tagline, null, null);
+        }
         private static readonly string[] ValidQueueTypes = ["normal", "ranked"];
 
         internal static bool TryParse(string player, out string ign, out string tagline, out string? error)

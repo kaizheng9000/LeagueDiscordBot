@@ -44,6 +44,13 @@ namespace Backend
             {
                 var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
                 await db.Database.EnsureCreatedAsync(cancellationToken);
+                await db.Database.ExecuteSqlRawAsync(@"
+                    CREATE TABLE IF NOT EXISTS LinkedAccounts (
+                        DiscordUserId TEXT NOT NULL PRIMARY KEY,
+                        Puuid TEXT NOT NULL DEFAULT '',
+                        Ign TEXT NOT NULL,
+                        Tagline TEXT NOT NULL
+                    )", cancellationToken);
             }
 
             _client.Log += LogDiscord;

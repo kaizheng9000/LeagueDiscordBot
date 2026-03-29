@@ -78,6 +78,17 @@ namespace Backend.RiotAPI
             return puuid;
         }
 
+        public async Task<(string ign, string tagline)> GetCurrentName(string puuid)
+        {
+            var response = await _httpClient.GetAsync($"{RiotApiEndpoints.AccountByPuuid}{puuid}");
+            response.EnsureSuccessStatusCode();
+
+            var json = JObject.Parse(await response.Content.ReadAsStringAsync());
+            string ign = (string?)json["gameName"] ?? throw new InvalidOperationException($"No gameName in account response for PUUID {puuid}.");
+            string tagline = (string?)json["tagLine"] ?? throw new InvalidOperationException($"No tagLine in account response for PUUID {puuid}.");
+            return (ign, tagline);
+        }
+
         public async Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid)
         {
             _logger.LogDebug("Fetching account details for PUUID {PUUID}", puuid);
