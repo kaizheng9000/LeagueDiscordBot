@@ -14,6 +14,7 @@ namespace Backend.RiotAPI
         private readonly HttpClient _plainHttpClient;
         private readonly ILogger<RiotApi> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly Dictionary<(string Ign, string Tagline), string> _puuidCache = new();
         private Dictionary<int, string>? _championIdMap;
 
         public RiotApi(IHttpClientFactory httpClientFactory, ILogger<RiotApi> logger, IServiceScopeFactory scopeFactory)
@@ -26,13 +27,22 @@ namespace Backend.RiotAPI
 
         public async Task<string> GetRiotPUUID(string ign, string tagline)
         {
+            var key = (ign, tagline);
+
+            if (_puuidCache.TryGetValue(key, out var cachedPuuid))
+            {
+                _logger.LogDebug("Memory cache hit for {IGN}#{Tagline}", ign, tagline);
+                return cachedPuuid;
+            }
+
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<BotDbContext>();
 
             var cached = await db.Summoners.FirstOrDefaultAsync(s => s.Ign == ign && s.Tagline == tagline);
             if (cached != null)
             {
-                _logger.LogDebug("Cache hit for {IGN}#{Tagline}", ign, tagline);
+                _logger.LogDebug("SQLite cache hit for {IGN}#{Tagline}", ign, tagline);
+                _puuidCache[key] = cached.Puuid;
                 return cached.Puuid;
             }
 
@@ -43,6 +53,7 @@ namespace Backend.RiotAPI
 
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
+                _puuidCache.Remove(key);
                 if (cached != null)
                 {
                     db.Summoners.Remove(cached);
@@ -62,6 +73,7 @@ namespace Backend.RiotAPI
 
             db.Summoners.Add(new Summoner { Ign = ign, Tagline = tagline, Puuid = puuid });
             await db.SaveChangesAsync();
+            _puuidCache[key] = puuid;
 
             return puuid;
         }
@@ -125,15 +137,23 @@ namespace Backend.RiotAPI
             var entries = JsonConvert.DeserializeObject<JArray>(await response.Content.ReadAsStringAsync())
                 ?? throw new InvalidOperationException($"Failed to deserialize league entries for PUUID {puuid}.");
 
+            static string FormatEntry(JToken? entry, string label)
+            {
+                if (entry == null) return $"{label}: Unranked";
+                string tier = (string?)entry["tier"] ?? "Unranked";
+                string rank = (string?)entry["rank"] ?? "";
+                int lp = (int)(entry["leaguePoints"] ?? 0);
+                int wins = (int)(entry["wins"] ?? 0);
+                int losses = (int)(entry["losses"] ?? 0);
+                int total = wins + losses;
+                string winRate = total > 0 ? $"{(int)Math.Round(wins * 100.0 / total)}%" : "0%";
+                return $"{label}: {tier} {rank} — {lp} LP — {wins}W {losses}L ({winRate})";
+            }
+
             var solo = entries.FirstOrDefault(e => (string?)e["queueType"] == "RANKED_SOLO_5x5");
-            if (solo == null)
-                return "Unranked";
+            var flex = entries.FirstOrDefault(e => (string?)e["queueType"] == "RANKED_FLEX_SR");
 
-            string tier = (string?)solo["tier"] ?? "Unranked";
-            string rank = (string?)solo["rank"] ?? "";
-            int lp = (int)(solo["leaguePoints"] ?? 0);
-
-            return $"{tier} {rank} {lp} LP";
+            return $"{FormatEntry(solo, "Solo/Duo")}\n{FormatEntry(flex, "Flex")}";
         }
 
         public async Task<string> GetTopChampion(string puuid)
