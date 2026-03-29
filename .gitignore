@@ -363,5 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # My Gitignore stuff
-/Backend/config.json
+config.json
 .vs/

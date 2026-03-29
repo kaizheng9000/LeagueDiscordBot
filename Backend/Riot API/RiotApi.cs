@@ -18,6 +18,8 @@ namespace Backend.RiotAPI
 
         public async Task<string> GetRiotPUUID(string ign, string tagline)
         {
+            _logger.LogDebug("Fetching PUUID for {IGN}#{Tagline}", ign, tagline);
+
             var response = await _httpClient.GetAsync(
                 $"{RiotApiEndpoints.AccountByRiotId}{Uri.EscapeDataString(ign)}/{Uri.EscapeDataString(tagline)}");
             response.EnsureSuccessStatusCode();
@@ -30,6 +32,8 @@ namespace Backend.RiotAPI
 
         public async Task<RiotAccountDetails> GetAccountDetailsByPUUID(string puuid)
         {
+            _logger.LogDebug("Fetching account details for PUUID {PUUID}", puuid);
+
             var response = await _httpClient.GetAsync($"{RiotApiEndpoints.SummonerByPuuid}{puuid}");
             response.EnsureSuccessStatusCode();
 
@@ -41,6 +45,8 @@ namespace Backend.RiotAPI
 
         public async Task<List<string>> GetMatchIds(string puuid, string queueType)
         {
+            _logger.LogDebug("Fetching {QueueType} match IDs for PUUID {PUUID}", queueType, puuid);
+
             var response = await _httpClient.GetAsync($"{RiotApiEndpoints.MatchIds}{puuid}/ids?type={queueType}");
             response.EnsureSuccessStatusCode();
 
@@ -52,6 +58,8 @@ namespace Backend.RiotAPI
 
         private async Task<JObject> GetMatchDetails(string matchId)
         {
+            _logger.LogDebug("Fetching match details for {MatchId}", matchId);
+
             var response = await _httpClient.GetAsync($"{RiotApiEndpoints.MatchDetails}{matchId}");
             response.EnsureSuccessStatusCode();
 
@@ -62,6 +70,8 @@ namespace Backend.RiotAPI
         {
             if (matchIds.Count == 0)
                 return "0.00";
+
+            _logger.LogInformation("Calculating average KDA across {Count} matches for PUUID {PUUID}", matchIds.Count, puuid);
 
             var matchDetails = await Task.WhenAll(matchIds.Select(GetMatchDetails));
 
