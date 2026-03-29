@@ -18,9 +18,9 @@ namespace Backend.Commands
         {
             await DeferAsync();
 
-            if (!PlayerInput.TryParse(player, out string ign, out string tagline))
+            if (!PlayerInput.TryParse(player, out string ign, out string tagline, out string? playerError))
             {
-                await FollowupAsync("Invalid format. Please use `IGN#Tagline` (e.g. `Faker#NA1`).");
+                await FollowupAsync(playerError!);
                 return;
             }
 
